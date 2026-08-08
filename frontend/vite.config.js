@@ -6,5 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-  }
+  },
+  build: {
+    // Vercel's @vercel/static-build looks for output in `dist/` by default
+    outDir: 'dist',
+  },
 })
