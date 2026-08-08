@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+*.env
+backend/.env
+frontend/.env
+
+# Python / Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+backend/venv/
+backend/.venv/
+.pytest_cache/
+backend/.pytest_cache/
+
+# Build & Distribution
+dist/
+build/
+frontend/dist/
+frontend/build/
+
+# IDE & Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
