@@ -22,7 +22,7 @@ def handle_copilot_ask(payload: CopilotRequest):
         ) from e
 
     try:
-        response_dict = ask_copilot(evidence, payload.question)
+        response_dict = ask_copilot(evidence, payload.question, payload.api_key)
         return CopilotResponse(**response_dict)
     except ValueError as e:
         raise HTTPException(

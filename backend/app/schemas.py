@@ -53,6 +53,8 @@ class RouterDetailResponse(BaseModel):
 class CopilotRequest(BaseModel):
     router_id: str
     question: str
+    api_key: str | None = None
+
 
 
 class CopilotResponse(BaseModel):

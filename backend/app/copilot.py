@@ -134,14 +134,15 @@ def _generate_rule_based_fallback(evidence: dict, question: str) -> dict:
     }
 
 
-def ask_copilot(evidence: dict, question: str) -> dict:
+def ask_copilot(evidence: dict, question: str, api_key: str | None = None) -> dict:
     """
     Calls Google Gemini LLM API with evidence bundle and question.
     Parses JSON and validates against CopilotResponse model.
-    Falls back to deterministic rule-based output if GEMINI_API_KEY is not configured.
-    Retries once with strict prompt on JSON parse failure.
+    Falls back to deterministic rule-based output if GEMINI_API_KEY is not configured or fails.
     """
-    clean_key = (GEMINI_API_KEY or "").strip().lower()
+    key_to_use = (api_key or os.getenv("GEMINI_API_KEY") or GEMINI_API_KEY or "").strip()
+    clean_key = key_to_use.lower()
+    
     if not clean_key or any(placeholder in clean_key for placeholder in ["your_gemini_api_key_here", "your_api_key_here", "sk-dummy", "placeholder", "xxx"]):
         logger.info("GEMINI_API_KEY not set or placeholder. Using rule-based copilot engine.")
         raw_res = _generate_rule_based_fallback(evidence, question)
@@ -152,26 +153,44 @@ def ask_copilot(evidence: dict, question: str) -> dict:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        client = genai.Client(api_key=key_to_use)
         user_prompt = f"Evidence: {json.dumps(evidence)}\nQuestion: {question}"
 
-        def call_api(prompt_text: str) -> str:
-            config = types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.2,
-                response_mime_type="application/json",
-            )
-            response = client.models.generate_content(
-                model=LLM_MODEL,
-                contents=prompt_text,
-                config=config,
-            )
-            return response.text
+        # Models to attempt in priority order
+        models_to_try = [LLM_MODEL]
+        for fallback in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]:
+            if fallback not in models_to_try:
+                models_to_try.append(fallback)
 
-        response_text = call_api(user_prompt)
+        response_text = None
+        last_error = None
+
+        for model_name in models_to_try:
+            try:
+                config = types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.2,
+                    response_mime_type="application/json",
+                )
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=user_prompt,
+                    config=config,
+                )
+                if response and response.text:
+                    response_text = response.text
+                    logger.info("Successfully generated response using model %s", model_name)
+                    break
+            except Exception as model_err:
+                last_error = model_err
+                logger.warning("Attempt with model %s failed: %s", model_name, model_err)
+
+        if not response_text:
+            raise ValueError(f"All Gemini models failed. Last error: {last_error}")
+
         cleaned_text = _clean_json_text(response_text)
         data = json.loads(cleaned_text)
-        data["router_id"] = evidence["router_id"]
+        data["router_id"] = evidence.get("router_id", "R-0000")
         validated = CopilotResponse(**data)
         return validated.model_dump()
 
@@ -179,10 +198,19 @@ def ask_copilot(evidence: dict, question: str) -> dict:
         logger.warning("First Gemini API call failed parse/validation (%s). Retrying once with strict instructions.", err)
         retry_prompt = user_prompt + "\n\nCRITICAL: Output ONLY raw valid JSON adhering exactly to the specified JSON schema. No additional words."
         try:
-            retry_text = call_api(retry_prompt)
-            cleaned_text = _clean_json_text(retry_text)
+            config = types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.1,
+                response_mime_type="application/json",
+            )
+            retry_res = client.models.generate_content(
+                model=models_to_try[0],
+                contents=retry_prompt,
+                config=config,
+            )
+            cleaned_text = _clean_json_text(retry_res.text)
             data = json.loads(cleaned_text)
-            data["router_id"] = evidence["router_id"]
+            data["router_id"] = evidence.get("router_id", "R-0000")
             validated = CopilotResponse(**data)
             return validated.model_dump()
         except Exception as retry_err:
@@ -193,3 +221,4 @@ def ask_copilot(evidence: dict, question: str) -> dict:
         logger.error("Error calling Gemini API (%s). Falling back to rule-based copilot engine.", e)
         raw_res = _generate_rule_based_fallback(evidence, question)
         return CopilotResponse(**raw_res).model_dump()
+

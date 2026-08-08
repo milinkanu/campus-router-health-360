@@ -3,6 +3,7 @@ import FilterBar from './components/FilterBar';
 import RankingsTable from './components/RankingsTable';
 import RouterDetailPanel from './components/RouterDetailPanel';
 import HealthDistributionChart from './components/HealthDistributionChart';
+import FloatingChatWidget from './components/FloatingChatWidget';
 import { Activity, ShieldAlert, Radio } from 'lucide-react';
 
 export default function App() {
@@ -22,9 +23,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#0B0F17] text-slate-100 flex flex-col relative">
       {/* Top Navbar */}
-      <header className="bg-[#151C28] border-b border-slate-800 sticky top-0 z-50 backdrop-blur bg-opacity-90">
+      <header className="bg-[#151C28] border-b border-slate-800 sticky top-0 z-40 backdrop-blur bg-opacity-90">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 shadow-lg text-white">
@@ -80,6 +81,12 @@ export default function App() {
         </div>
       </main>
 
+      {/* Floating Chat Widget fixed on right side */}
+      <FloatingChatWidget
+        selectedRouterId={selectedRouterId}
+        onSelectRouter={setSelectedRouterId}
+      />
+
       {/* Footer */}
       <footer className="bg-[#151C28] border-t border-slate-800 py-4 text-center text-xs text-slate-500 mt-12">
         <p>Campus Router Health 360 • DigiPlus IT Agentic AI Platform</p>
@@ -87,3 +94,4 @@ export default function App() {
     </div>
   );
 }
+

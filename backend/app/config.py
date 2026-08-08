@@ -2,9 +2,12 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from backend/.env or root .env
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
+load_dotenv()
 
 # Data directory path (default: data folder inside backend)
 raw_csv_dir = os.getenv("CSV_DATA_DIR", "data")
@@ -41,4 +44,5 @@ ISSUE_LABELS = {
 
 # Copilot / LLM Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-LLM_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+LLM_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+

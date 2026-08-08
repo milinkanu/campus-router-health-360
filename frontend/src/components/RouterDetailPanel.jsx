@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { getRouterDetail } from '../api/client';
 import MetricChart from './MetricChart';
 import ComplaintsList from './ComplaintsList';
-import CopilotBox from './CopilotBox';
 import { Router, Cpu, Building2, User, Calendar, ShieldCheck, AlertTriangle, Activity } from 'lucide-react';
 
 export default function RouterDetailPanel({ routerId }) {
@@ -163,9 +162,7 @@ export default function RouterDetailPanel({ routerId }) {
 
       {/* Complaints List */}
       <ComplaintsList complaints={detail.complaints} />
-
-      {/* AI Copilot Card */}
-      <CopilotBox routerId={detail.router_id} />
     </div>
   );
 }
+
