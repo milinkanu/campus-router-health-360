@@ -14,11 +14,32 @@ from app.config import WEIGHTS, ISSUE_LABELS
 logger = logging.getLogger(__name__)
 
 
+def _simple_kmeans(X: np.ndarray, k: int, max_iters: int = 20, seed: int = 42) -> np.ndarray:
+    np.random.seed(seed)
+    n_samples = len(X)
+    if n_samples <= k:
+        return np.arange(n_samples, dtype=int)
+    idx = np.random.choice(n_samples, k, replace=False)
+    centroids = X[idx].copy()
+    labels = np.zeros(n_samples, dtype=int)
+    for _ in range(max_iters):
+        distances = np.linalg.norm(X[:, np.newaxis] - centroids, axis=2)
+        new_labels = np.argmin(distances, axis=1)
+        if np.array_equal(labels, new_labels):
+            break
+        labels = new_labels
+        for i in range(k):
+            members = X[labels == i]
+            if len(members) > 0:
+                centroids[i] = members.mean(axis=0)
+    return labels
+
+
 def cluster_routers(metrics_df: pd.DataFrame, routers_df: pd.DataFrame, n_clusters: int = 4) -> dict:
     """
     1. Reuse aggregate_router_metrics() + normalize_column() from health_score.py.
     2. Build a feature matrix of the 5 normalized component columns per router.
-    3. Run sklearn.cluster.KMeans(n_clusters=n_clusters, random_state=42, n_init=10).
+    3. Run KMeans clustering.
     4. For each cluster, compute the mean of raw feature values and assign an auto-label.
     5. Return dict with cluster summaries and router lists.
     """
@@ -45,10 +66,8 @@ def cluster_routers(metrics_df: pd.DataFrame, routers_df: pd.DataFrame, n_cluste
         from sklearn.cluster import KMeans
         kmeans = KMeans(n_clusters=actual_k, random_state=42, n_init=10)
         cluster_labels = kmeans.fit_predict(X)
-    except Exception as e:
-        logger.warning("KMeans failed (%s). Using fallback quantile binning.", e)
-        # Quantile binning fallback
-        cluster_labels = (norm_df.sum(axis=1) * actual_k).astype(int).clip(0, actual_k - 1).values
+    except Exception:
+        cluster_labels = _simple_kmeans(X, actual_k)
 
     aggs["cluster_id"] = cluster_labels
 
